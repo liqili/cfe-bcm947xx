@@ -135,6 +135,11 @@ To build the firmware for the BCM947xx evaluation boards.
 for example:
 
 	cd build/broadcom/bcm947xx/
+
+  for RT-AC68U
+  make RTAC68U=1 PATYPE=0
+
+  for Netgear R6250
   make RTAC68U=1 PATYPE=R6250
 
 
