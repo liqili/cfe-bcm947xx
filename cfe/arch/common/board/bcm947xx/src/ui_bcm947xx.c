@@ -541,8 +541,10 @@ ui_get_nand_boot_flashdev(char *flashdev)
 {
 	if (!flashdev)
 		return;
-
-	strcpy(flashdev, "nflash1.boot");
+	if (soc_boot_dev((void *)sih) == SOC_BOOTDEV_NANDFLASH)
+		strcpy(flashdev, "nflash1.boot");
+	else
+		strcpy(flashdev, "nflash0");
 
 	return;
 }
@@ -690,9 +692,14 @@ ui_cmd_go(ui_cmdline_t *cmd, int argc, char *argv[])
                 }
                 if(trx1_ret) { //trx1 failed
 #else
-                if (check_trx(trx_name) || nvram_match("asus_trx_test", "1")) {
+                if (0 == ui_is_boot_from_nflash() || check_trx(trx_name) || nvram_match("asus_trx_test", "1")) {
+				//just want to directly into rescue mode if boot from spi flash
 #endif
-                        xprintf("Hello!! Enter Rescue Mode: (Check error)\n\n");
+				if(0 == ui_is_boot_from_nflash()){
+					xprintf("Hello!! Boot from SPI flash. Enter Rescue Mode: (By force)\n\n");
+				}else{
+					xprintf("Hello!! Enter Rescue Mode: (Check error)\n\n");
+				}
 			FW_err_count = atoi(nvram_get("Ate_FW_err"));
 			FW_err_count++;
 			sprintf(FW_err, "%d", FW_err_count);

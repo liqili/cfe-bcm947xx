@@ -613,8 +613,6 @@ httpd_appcall(struct httpd_state *hs)
 		else if (strncmp("GET ", hs->uip_appdata, 4) == 0) {
 			if (!strncmp("do", hs->uip_appdata+5, 2)) {
 				hs->state = HTTP_FUNC;
-				httpd_page_init(hs);
-
 				/* Do commands */
 				return httpd_do_cmd(hs);
 			}
@@ -629,7 +627,7 @@ httpd_appcall(struct httpd_state *hs)
 		httpd_printf(hs,
 			"<table border=0 cellpadding=0 cellspacing=0 bgcolor=#306498>\r\n"
 			"<tr><td height=57 width=600>\r\n"
-			"<font face=Arial size=6 color=#ffffff>ASUSTek - CFE miniWeb Server</font>\r\n"
+			"<font face=Arial size=6 color=#ffffff>Broadcom - CFE miniWeb Server</font>\r\n"
 			"</td></tr>\r\n"
 			"</table><br>\r\n"
 			"<form action=f2.htm method=post encType=multipart/form-data>\r\n"
@@ -702,11 +700,11 @@ httpd_defercall(struct httpd_state *hs)
 		if (hs->eval[0]) {
 			xprintf("%s command executed\n", hs->eval);
 			if(strcmp(hs->eval, "dump") == 0){
-				xprintf("Doing %s\n", hs->eval);
-				ui_get_nand_boot_flashdev(flashdev);//read nand boot partition
-				char buffer[512];
-				httpd_read_flash(flashdev,(uint8_t *)buffer,sizeof(buffer));
-				httpd_file_download(hs,(uint8_t *)buffer);
+				// xprintf("Doing %s\n", hs->eval);
+				// ui_get_nand_boot_flashdev(flashdev);//read nand boot partition
+				// char buffer[512];
+				// httpd_read_flash(flashdev,(uint8_t *)buffer,sizeof(buffer));
+				// httpd_file_download(hs,(uint8_t *)buffer);
 			}else{
 				ui_docommands(hs->eval);
 			}
@@ -1002,9 +1000,12 @@ httpd_do_cmd(struct httpd_state *hs)
 	char *cmd;
 	int rc = 0;
 
+
 	cmd = httpd_cmd_parse(hs);
 	if (strcmp(cmd, "reboot") == 0 ||
 	    strcmp(cmd, "nvram erase") == 0) {
+
+		httpd_page_init(hs);
 		/*
 		 * Defer these two comands,
 		 * until sending response out.
@@ -1012,8 +1013,16 @@ httpd_do_cmd(struct httpd_state *hs)
 		strcpy(hs->eval, cmd);
 	}else if(strcmp(cmd, "dump") == 0){
 		strcpy(hs->eval, cmd);
+		xprintf("Doing %s\n", hs->eval);
+		char *flashdev = "nflash1.boot";
+		ui_get_nand_boot_flashdev(flashdev);//read nand boot partition
+		char buffer[512];
+		httpd_read_flash(flashdev,(uint8_t *)buffer,sizeof(buffer));
+		httpd_file_download(hs,(uint8_t *)buffer);
+		return 0;
 	}
 	else {
+		httpd_page_init(hs);
 		rc = ui_docommands(cmd);
 	}
 

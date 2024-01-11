@@ -484,6 +484,9 @@ printf("*** flash_nflash_init ***\n");
 
 	cfe_add_device(drv, 0, 0, &fprobe);
 
+	fprobe.flash_nparts = 0;//we want to be able to flash entire nand while boot from serial flash
+	cfe_add_device(drv, 0, 0, &fprobe);
+
 #if defined(FAILSAFE_UPGRADE) || defined(DUAL_IMAGE)
 	if (need_commit)
 		nvram_commit();
