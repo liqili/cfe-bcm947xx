@@ -160,6 +160,7 @@ static void httpd_printf(struct httpd_state *hs, char *templat, ...);
 static int trx_validate(uint8_t *ptr, int *insize);
 static int httpd_write_flash(char *flashdev, uint8 *load_addr, int len);
 static int httpd_read_flash(char *flashdev, unsigned char *buffer, int len);
+static void httpd_file_download(struct httpd_state *hs, unsigned char *buffer);
 
 extern int ui_docommands(char *buf);
 extern int flash_validate(uint8_t *ptr, int bufsize, int insize, uint8_t **outptr, int *outsize);
@@ -637,13 +638,14 @@ httpd_appcall(struct httpd_state *hs)
 			"<input type=submit value=Upload><br>\r\n"
 			"</form>\r\n"
 			"<form action=f3.htm method=post encType=multipart/form-data>\r\n"
-			"Bootloader File&nbsp\r\n"
+			"Bootloader &nbsp\r\n"
 			"<input type=file size=35 name=files>\r\n"
 			"<input type=submit value=Upload><br>\r\n"
 			"</form>\r\n"
 			"<form action=do.htm method=get>\r\n"
 			"<br>Command:<br><a href=do.htm?cmd=reboot>Reboot.</a>\r\n"
 			"<br><a href=do.htm?cmd=nvram+erase>Restore default NVRAM values.</a>\r\n"
+			"<br><a href=do.htm?cmd=dump>Dump cfe.</a>\r\n"
 			"</form>\r\n");
 		httpd_page_end(hs, 0, 0);
 		return 0;
@@ -699,11 +701,12 @@ httpd_defercall(struct httpd_state *hs)
 	else if (hs->state == HTTP_FUNC) {
 		if (hs->eval[0]) {
 			xprintf("%s command executed\n", hs->eval);
-			if(strcmp(hs->eval, "read") == 0){
+			if(strcmp(hs->eval, "dump") == 0){
 				xprintf("Doing %s\n", hs->eval);
 				ui_get_nand_boot_flashdev(flashdev);//read nand boot partition
 				char buffer[512];
 				httpd_read_flash(flashdev,(uint8_t *)buffer,sizeof(buffer));
+				httpd_file_download(hs,(uint8_t *)buffer);
 			}else{
 				ui_docommands(hs->eval);
 			}
@@ -863,23 +866,25 @@ httpd_load_program(struct httpd_state *hs)
 		/*
 		 * Do trx header check.
 		 */
-		rc = trx_validate((uint8_t *)hs->load_addr, &hs->ul_offset);
-		switch (rc) {
-		case 0:
-			resp = "Upload completed.  System is going to reboot.<br>Please wait a few moments.";
-			break;
+		if(hs->state == HTTP_UPLOAD_EXE)
+		{
+			rc = trx_validate((uint8_t *)hs->load_addr, &hs->ul_offset);
+			switch (rc) {
+			case 0:
+				resp = "Upload completed.  System is going to reboot.<br>Please wait a few moments.";
+				break;
 
-		case CFE_ERR_DEVNOTFOUND:
-			resp = "Could not open flash device.";
-			hs->ul_state = 0;
-			break;
+			case CFE_ERR_DEVNOTFOUND:
+				resp = "Could not open flash device.";
+				hs->ul_state = 0;
+				break;
 
-		default:
-			resp = "The file transferred is not a valid firmware image.";
-			hs->ul_state = 0;
-			break;
+			default:
+				resp = "The file transferred is not a valid firmware image.";
+				hs->ul_state = 0;
+				break;
+			}
 		}
-
 		httpd_printf(hs, "%s</font></pre>", resp);
 		httpd_page_end(hs, 0, 1);
 
@@ -957,6 +962,17 @@ httpd_printf(struct httpd_state *hs, char *templat, ...)
 	hs->page_len += xvsprintf(hs->page_buf + hs->page_len, templat, marker);
 	va_end(marker);
 }
+static void
+httpd_file_download(struct httpd_state *hs, unsigned char *buffer)
+{
+	// hs->page_len = 0;
+	httpd_printf(hs,
+		"HTTP/1.1 200 OK\r\n"
+		"Pragma: no-cache\r\nCache-Control: no-cache\r\n"
+		"Connection: close\r\n"
+		"Content-disposition: attachment; filename=cfe_backup.bin\r\n\r\n");
+	httpd_printf(hs,(char*)buffer);
+}
 
 static void
 httpd_page_init(struct httpd_state *hs)
@@ -994,7 +1010,7 @@ httpd_do_cmd(struct httpd_state *hs)
 		 * until sending response out.
 		 */
 		strcpy(hs->eval, cmd);
-	}else if(strcmp(cmd, "read") == 0){
+	}else if(strcmp(cmd, "dump") == 0){
 		strcpy(hs->eval, cmd);
 	}
 	else {

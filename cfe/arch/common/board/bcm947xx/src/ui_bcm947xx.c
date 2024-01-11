@@ -391,7 +391,7 @@ unsigned char DETECT(void)
         unsigned char d = 0;
         char *rescueflag;
 
-        if ((rescueflag = nvram_get("rescueflag")) != NULL) {
+        if ((rescueflag = nvram_get("rescueflag")) != NULL){
                 if (!nvram_invmatch("rescueflag", "enable")) {
                         xprintf("Rescue Flag enable.\n");
                         d = 1;
@@ -515,6 +515,13 @@ int check_image_prepare_cmd(int the_image, char *buf, uint32 osaddr, int bufsize
 #endif /* DUAL_IMAGE || FAILSAFE_UPGRADE */
 
 #ifdef CFG_NFLASH
+int
+ui_is_boot_from_nflash(void)
+{
+	if(soc_boot_dev((void *)sih) == SOC_BOOTDEV_NANDFLASH)
+		return 1;
+	return 0;
+}
 void
 ui_get_boot_flashdev(char *flashdev)
 {
@@ -691,7 +698,7 @@ ui_cmd_go(ui_cmdline_t *cmd, int argc, char *argv[])
 			sprintf(FW_err, "%d", FW_err_count);
 			nvram_set("Ate_FW_err", FW_err);
 			nvram_commit();
-			if(nvram_match("asus_mfg", "1")){	// goto cmd mode if during ATE mode
+			if(nvram_match("asus_mfg", "1") || 0 == ui_is_boot_from_nflash()){	// goto cmd mode if during ATE mode
 				LEDOFF();
 				cfe_command_loop();
 			} else{					// 3 steps

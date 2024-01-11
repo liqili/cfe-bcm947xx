@@ -727,7 +727,10 @@ program:
 #ifdef RESCUE_MODE
     if (norescue == 0) {
         if (copysize>0 && copysize<=0x40000) {
-                strcpy(flashdev, "nflash1.boot");
+                #ifdef CFG_NFLASH
+                    if (1 == ui_is_boot_from_nflash())
+                        strcpy(flashdev, "nflash1.boot");
+                #endif
                 for (i=0; i<0x40000; i++)
                         bootbuf[i] = (*(unsigned char *) (0xbfc00000+i));
                 if (

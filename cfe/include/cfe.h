@@ -69,7 +69,6 @@ extern unsigned cfe_startflags;
     ********************************************************************* */
 
 #define CFE_MAX_HANDLE 64		/* max file handles */
-
 /*  *********************************************************************
     *  prototypes
     ********************************************************************* */
@@ -95,5 +94,6 @@ void ui_get_boot_flashdev(char *flashdev);
 void ui_get_nand_boot_flashdev(char *flashdev);
 void ui_get_os_flashdev(char *flashdev);
 void ui_get_trx_flashdev(char *flashdev);
+int ui_is_boot_from_nflash(void);
 void dump_nflash(int block_no);
 #endif /* CFG_NFLASH */
