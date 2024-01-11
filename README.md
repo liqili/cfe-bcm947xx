@@ -134,7 +134,9 @@ Building CFE
 To build the firmware for the BCM947xx evaluation boards. 
 for example:
 
-	cd bcm947xx ; gmake all ; cd ..
+	cd build/broadcom/bcm947xx/
+  make RTAC68U=1 PATYPE=R6250
+
 
 This will produce:
 
