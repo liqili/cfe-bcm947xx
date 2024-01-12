@@ -159,7 +159,7 @@ static int httpd_do_ul(struct httpd_state *hs);
 static void httpd_printf(struct httpd_state *hs, char *templat, ...);
 static int trx_validate(uint8_t *ptr, int *insize);
 static int httpd_write_flash(char *flashdev, uint8 *load_addr, int len);
-static int httpd_read_flash(char *flashdev, unsigned char *buffer, int len);
+static int httpd_read_flash(char *flashdev, char **buffer);
 static void httpd_file_download(struct httpd_state *hs, unsigned char *buffer);
 
 extern int ui_docommands(char *buf);
@@ -963,7 +963,7 @@ httpd_printf(struct httpd_state *hs, char *templat, ...)
 static void
 httpd_file_download(struct httpd_state *hs, unsigned char *buffer)
 {
-	// hs->page_len = 0;
+	hs->page_len = 0;
 	httpd_printf(hs,
 		"HTTP/1.1 200 OK\r\n"
 		"Pragma: no-cache\r\nCache-Control: no-cache\r\n"
@@ -1016,9 +1016,12 @@ httpd_do_cmd(struct httpd_state *hs)
 		xprintf("Doing %s\n", hs->eval);
 		char *flashdev = "nflash1.boot";
 		ui_get_nand_boot_flashdev(flashdev);//read nand boot partition
-		char buffer[512];
-		httpd_read_flash(flashdev,(uint8_t *)buffer,sizeof(buffer));
+		char *buffer;
+		httpd_read_flash(flashdev,&buffer);
 		httpd_file_download(hs,(uint8_t *)buffer);
+		httpd_page_end(hs, rc, 1);
+		KFREE(buffer);
+		buffer = NULL;
 		return 0;
 	}
 	else {
@@ -1172,10 +1175,10 @@ httpd_write_flash(char *flashdev, uint8 *load_addr, int len)
 }
 
 static int
-httpd_read_flash(char *flashdev, unsigned char *buffer, int len)
+httpd_read_flash(char *flashdev, char **buffer)
 {
 	int devtype;
-	int copysize;
+	int copysize=1024;
 	flash_info_t flashinfo;
 	int res;
 	int fh;
@@ -1192,10 +1195,6 @@ httpd_read_flash(char *flashdev, unsigned char *buffer, int len)
 
 	devtype = res & CFE_DEV_MASK;
 
-	copysize = len;
-	if (copysize == 0)
-		return 0;		/* 0 bytes, don't flash */
-
 	/*
 	 * Open the destination flash device.
 	 */
@@ -1208,12 +1207,17 @@ httpd_read_flash(char *flashdev, unsigned char *buffer, int len)
 	if (cfe_ioctl(fh, IOCTL_FLASH_GETINFO, (unsigned char *)&flashinfo,
 		sizeof(flash_info_t), &res, 0) == 0) {
 		/* Truncate write if source size is greater than flash size */
-		if ((copysize + offset) > flashinfo.flash_size)
-			copysize = flashinfo.flash_size - offset;
+		// if ((copysize + offset) > flashinfo.flash_size)
+		copysize = flashinfo.flash_size - offset;
 	}
 
+	char copy_buffer[copysize];
+
 	// res = cfe_readblk(fh, offset,buffer,len);
-	res = cfe_read(fh,buffer,len);
+	res = cfe_read(fh,(uint8_t *)copy_buffer,copysize);
+
+	*buffer = copy_buffer;
+
 	// if (res > 0) console_write(buffer,res);
 	// if (res < 0) break;
 	cfe_close(fh);
