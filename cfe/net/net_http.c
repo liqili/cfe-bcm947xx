@@ -643,7 +643,7 @@ httpd_appcall(struct httpd_state *hs)
 			"<form action=do.htm method=get>\r\n"
 			"<br>Command:<br><a href=do.htm?cmd=reboot>Reboot.</a>\r\n"
 			"<br><a href=do.htm?cmd=nvram+erase>Restore default NVRAM values.</a>\r\n"
-			"<br><a href=do.htm?cmd=dump>Dump cfe.</a>\r\n"
+			// "<br><a href=do.htm?cmd=dump>Dump cfe.</a>\r\n"
 			"</form>\r\n");
 		httpd_page_end(hs, 0, 0);
 		return 0;
@@ -661,7 +661,7 @@ httpd_defercall(struct httpd_state *hs)
 	http_info_t *ti = hs->ti;
 	tcb_t *tcb = hs->tcb;
 #ifdef CFG_NFLASH
-	char flashdev[12];
+	char *flashdev = "nflash1.trx";
 #else
 	char *flashdev = "flash1.trx";
 #endif
@@ -675,7 +675,7 @@ httpd_defercall(struct httpd_state *hs)
 			_tcphttp_protosend(ti, tcb);
 
 #ifdef CFG_NFLASH
-			ui_get_trx_flashdev(flashdev);
+			// ui_get_trx_flashdev(flashdev);
 #endif
 			/* Write to flash */
 			httpd_write_flash(flashdev, (uint8 *)hs->load_addr, hs->ul_offset);
@@ -1233,9 +1233,7 @@ trx_validate(uint8_t *ptr, int *insize)
 	flash_info_t flashinfo;
 	int fh, res;
 #ifdef CFG_NFLASH
-	char flashdev[12];
-	
-	ui_get_trx_flashdev(flashdev);
+	char *flashdev = "nflash1.trx";
 #else
 	char *flashdev = "flash1.trx";
 #endif
