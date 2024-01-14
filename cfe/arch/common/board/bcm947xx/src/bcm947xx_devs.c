@@ -419,6 +419,7 @@ flash_nflash_init(void)
 {
 	newflash_probe_t fprobe;
 	cfe_driver_t *drv;
+	uint32 bootsz, *bisz;
 	hndnand_t *nfl_info;
 	int j;
 	fl_size_t max_image_size = 0;
@@ -464,8 +465,40 @@ printf("*** flash_nflash_init ***\n");
 
 		cfe_add_device(drv, 0, 0, &fprobe);
 
+		/* Default is 256K boot partition */
+		bootsz = 256 * 1024;
+
+		/* Do we have a self-describing binary image? */
+		bisz = (uint32 *)UNCADDR(fprobe.flash_phys + BISZ_OFFSET);
+		if (bisz[BISZ_MAGIC_IDX] == BISZ_MAGIC) {
+			int isz = bisz[BISZ_DATAEND_IDX] - bisz[BISZ_TXTST_IDX];
+
+			if (isz > (1024 * 1024))
+				bootsz = 2048 * 1024;
+			else if (isz > (512 * 1024))
+				bootsz = 1024 * 1024;
+			else if (isz > (256 * 1024))
+				bootsz = 512 * 1024;
+			else if (isz <= (128 * 1024))
+				bootsz = 128 * 1024;
+		}
+		printf("Boot partition size = %d(0x%x)\n", bootsz, bootsz);
+		if (nfl_info) {
+
+			if (bootsz > nfl_info->blocksize) {
+				/* Prepare double space in case of bad blocks */
+				bootsz = (bootsz << 1);
+			} else {
+				/* CFE occupies at least one block */
+				bootsz = nfl_info->blocksize;
+			}
+		}
 		/* Because CFE can only boot from the beginning of a partition */
 		j = 0;
+		fprobe.flash_parts[j].fp_size = bootsz;
+		fprobe.flash_parts[j++].fp_name = "boot";
+		fprobe.flash_parts[j].fp_size = (nfl_boot_size(nfl_info) - bootsz);
+		fprobe.flash_parts[j++].fp_name = "nvram";
 		fprobe.flash_parts[j].fp_size = max_image_size ?
 		max_image_size : nfl_boot_os_size(nfl_info);
 		fprobe.flash_parts[j++].fp_name = "trx";
